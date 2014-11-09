@@ -8,7 +8,7 @@ config = {
     "help": ".release [show name] (--previous) (--comment=TEXT) (--preview=TIME) || Releases the show by uploading to DCC bots, the seedbox, Nyaa, TT, and creating the blog post. Requires a .mkv and .xdelta. Use --previous for releasing a v2. See .man preview for --preview help.",
 }
 
-def command(guid, manager, irc, channel, user, show, previous = False, comment = None, preview = None, webm = None):
+def command(guid, manager, irc, channel, user, show, previous = False, comment = None, preview = None, mp4 = None):
     show = manager.master.modules["showtimes"].resolve(show)
     if not show.folder.ftp:
         raise manager.exception(u"No FTP folder given for {}".format(show.name.english))
@@ -20,13 +20,13 @@ def command(guid, manager, irc, channel, user, show, previous = False, comment =
     comment = u"{}: {}".format(user, comment) if comment is not None else None
     preview = preview.lower() if preview is not None else None
 
-    if webm is True:
-        webm = 3.0 # Defaults to 3 seconds
-    elif webm:
+    if mp4 is True:
+        mp4 = 3.0 # Defaults to 3 seconds
+    elif mp4:
         try:
-            webm = float(webm)
+            mp4 = float(mp4)
         except:
-            raise manager.exception(u"--webm must be the number of seconds the preview should last for. Got \"{}\" instead.".format(webm))
+            raise manager.exception(u"--mp4 must be the number of seconds the preview should last for. Got \"{}\" instead.".format(mp4))
 
     # Step 0: Clean up script reviews
     if show.id in manager.master.modules["subs"].show_scripts:
@@ -87,7 +87,7 @@ def command(guid, manager, irc, channel, user, show, previous = False, comment =
     version = match.group(1) if match is not None else ""
 
     # Step 1e: Create preview image
-    preview = yield manager.master.modules["subs"].preview(guid, folder, complete, preview, webm, isRelease=True)
+    preview = yield manager.master.modules["subs"].preview(guid, folder, complete, preview, mp4, isRelease=True)
     
     # Step 2: Create torrent
     irc.notice(user, u"Creating torrent")

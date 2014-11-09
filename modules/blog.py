@@ -80,7 +80,7 @@ class Module(object):
         end = " END" if episode == show.episode.total else ""
         title = u"{} {:02d}{}{}".format(show.name.english, episode, version, end)
 
-        img_type = 'video loop="loop" onmouseover="this.play()" onmouseout="this.pause()"' if img_link.endswith("webm") else 'img'
+        img_type = 'video loop="loop" onmouseover="this.play()" onmouseout="this.pause()"' if img_link.endswith("mp4") else 'img'
         img = '<{} src="{}" title="{}" style="width: 100%; border-radius: 5px;" />'.format(img_type, img_link, "" if hovertext is None else hovertext.replace('"', '&quot;'))
         comment = "<br><br>{}".format(comment.encode("utf8")) if comment is not None else ""
 

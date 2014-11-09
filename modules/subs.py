@@ -132,21 +132,21 @@ class Module(object):
 
 
     @inlineCallbacks
-    def preview(self, guid, folder, premux, preview, webm, isRelease = False):
+    def preview(self, guid, folder, premux, preview, mp4, isRelease = False):
         dispatch = self.master.modules["commands"].dispatch
         exception = self.master.modules["commands"].exception
         ftp = False
         time = None
 
-        if webm and webm > 60:
-            raise exception(u"Max duration of a webm preview is 60 seconds. You asked for {:.03f} seconds.".format(webm))
+        if mp4 and mp4 > 60:
+            raise exception(u"Max duration of a mp4 preview is 60 seconds. You asked for {:.03f} seconds.".format(mp4))
 
         # Fuck unicode
         if premux.encode("ascii", "ignore").decode("ascii") != premux:
             shutil.copy(os.path.join(guid, premux).encode("utf8"), os.path.join(guid, "non_unicode_filename_hack.mkv"))
             premux = "non_unicode_filename_hack.mkv"
 
-        for ext in ["webm", "jpg", "jpeg", "png", "gif"]:
+        for ext in ["webm", "jpg", "jpeg", "png", "gif", "mp4"]:
             try:
                 dispatch("update", guid, u"Determining last modified {} file".format(ext))
                 preview_image = yield self.master.modules["ftp"].getLatest(folder, "*.{}".format(ext))
@@ -162,7 +162,7 @@ class Module(object):
         if preview == "ftp" and not ftp:
             raise exception(u"Aborted releasing {}: Couldn't find preview image on FTP".format(show.name.english))
 
-        if not ftp or (preview is not None and preview != "ftp") or (webm and preview_ext != "webm"):
+        if not ftp or (preview is not None and preview != "ftp") or (mp4 and preview_ext != "mp4"):
             if preview is None or "+" in preview:
                 try:
                     if isRelease:
@@ -209,38 +209,25 @@ class Module(object):
                     raise exception(u"Aborted previewing {}: Requested chapter \"{}\" not found".format(show.name.english, chapter))
                 time = chapters[chapter]["start"] + self.master.modules["subs"].timeToInt(offset)
 
-            if webm and preview is None:
-                rough_time = self.master.modules["subs"].intToTime(time, short=True)
-                fine_time = "0.000"
-            elif time > 20000:
-                rough_time = self.master.modules["subs"].intToTime(time - 20000, short=True)
-                fine_time = "20.000"
-            else:
-                rough_time = "0.000"
-                fine_time = self.master.modules["subs"].intToTime(time, short=True)
-
+            seek_time = self.master.modules["subs"].intToTime(time, short=True)
 
             dispatch("update", guid, u"Generating preview image")
 
-            if webm:
-                preview_ext = "webm"
+            if mp4:
+                preview_ext = "mp4"
                 args = [
                     "-y", # Overwrite files with the same name
-                    "-ss", rough_time,
+                    "-ss", seek_time,
                     "-i", os.path.join(guid, premux).encode("utf8"),
-                    "-ss", fine_time,
-                    "-t", "{:0.3f}".format(webm),
+                    "-t", "{:0.3f}".format(mp4),
                     "-an", # Disable audio
                     "-sn", # Disable subs
-                    "-f", "webm", # Yes, this is webm
-                    "-c:v", "libvpx", # Use standard webm video codec
+                    "-f", "mp4", # Yes, this is mp4
+                    "-c:v", "libx264", # Use H.264
                     "-b:v", "1M", # 1mbps is plenty
                     "-vf", "scale=-1:720", # 720p
-                    "-quality", "best", # "best" quality
+                    "-preset", "veryslow", # "best" quality
                     "-threads", "0", # Speed up encoding
-                    "-cpu-used", "0", # IDFK
-                    "-slices", "8", # Black magic
-                    "-auto-alt-ref", "1" # ????????
                 ]
                 out, err, code = yield getProcessOutputAndValue(self.master.modules["utils"].getPath("ffmpeg"), args=args+["-pass", "1", "/dev/null"], env=os.environ)
                 if code == 0:
@@ -254,9 +241,8 @@ class Module(object):
                 #extraargs.extend(["-vf", "colormatrix=bt709:bt601"])
                 out, err, code = yield getProcessOutputAndValue(self.master.modules["utils"].getPath("ffmpeg"), args=[
                     "-y", # Overwrite files with the same name
-                    "-ss", rough_time,
+                    "-ss", seek_time,
                     "-i", os.path.join(guid, premux).encode("utf8"),
-                    "-ss", fine_time
                 ] + extraargs + [
                     "-vframes", "1",
                     os.path.join(guid, "preview.{}".format(preview_ext))
